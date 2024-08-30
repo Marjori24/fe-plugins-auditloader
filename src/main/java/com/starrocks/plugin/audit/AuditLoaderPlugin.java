@@ -420,11 +420,11 @@ public class AuditLoaderPlugin extends Plugin implements AuditPlugin {
             event.digest = computeStatementDigest(event.stmt);
             LOG.debug("compute stmt digest, queryId: {} digest: {}", event.queryId, event.digest);
         }
-        auditBuffer.append(event.digest).append(COLUMN_SEPARATOR);
-        auditBuffer.append(event.planCpuCosts).append(COLUMN_SEPARATOR);
-        auditBuffer.append(event.planMemCosts).append(COLUMN_SEPARATOR);
-        auditBuffer.append(event.candidateMvs).append(COLUMN_SEPARATOR);
-        auditBuffer.append(event.hitMVs).append(ROW_DELIMITER);
+        eventAudit.append(event.digest).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.planCpuCosts).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.planMemCosts).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.candidateMvs).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.hitMVs).append(ROW_DELIMITER);
 
         KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
         ProducerRecord producerRecord = new ProducerRecord(AuditLoaderConf.PUMA_KAFKA_TOPIC, eventAuditId, eventAudit.toString());
