@@ -52,6 +52,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+//ADDED PUMA
+import java.util.concurrent.Future;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+
 /*
  * This plugin will load audit log to specified starrocks table at specified interval
  */
@@ -365,5 +372,63 @@ public class AuditLoaderPlugin extends Plugin implements AuditPlugin {
             return DATETIME_FORMAT.format(new Date());
         }
         return DATETIME_FORMAT.format(new Date(timeStamp));
+    }
+
+    public void sendToKafka(AuditEvent event){
+        
+        Properties properties = new Properties();
+        properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, AuditLoaderConf.PUMA_KAFKA_BOOTSTRAP_SERVERS_CONFIG);
+        properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, AuditLoaderConf.PUMA_KAFKA_KEY_SERIALIZER_CLASS_CONFIG);
+        properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, AuditLoaderConf.PUMA_KAFKA_VALUE_SERIALIZER_CLASS_CONFIG);
+        properties.setProperty(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, AuditLoaderConf.PUMA_KAFKA_MAX_REQUEST_SIZE_CONFIG);
+        properties.setProperty(ProducerConfig.BUFFER_MEMORY_CONFIG, AuditLoaderConf.PUMA_KAFKA_BUFFER_MEMORY_CONFIG);
+        properties.setProperty(ProducerConfig.MAX_BLOCK_MS_CONFIG, AuditLoaderConf.PUMA_KAFKA_MAX_BLOCK_MS_CONFIG);
+        properties.setProperty(ProducerConfig.BATCH_SIZE_CONFIG, AuditLoaderConf.PUMA_KAFKA_BATCH_SIZE_CONFIG);
+        properties.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, AuditLoaderConf.PUMA_KAFKA_COMPRESSION_TYPE_CONFIG);
+        properties.setProperty(ProducerConfig.LINGER_MS_CONFIG, AuditLoaderConf.PUMA_KAFKA_LINGER_MS_CONFIG);
+        properties.setProperty("security.protocol",AuditLoaderConf.PUMA_KAFKA_SECURITY_PROTOCOL);
+        properties.setProperty("sasl.mechanism",AuditLoaderConf.PUMA_KAFKA_SASL_MECHANISM);
+        properties.setProperty("sasl.jaas.config",AuditLoaderConf.PUMA_KAFKA_SASL_JAAS_CONFIG);
+        properties.setProperty("sasl.client.callback.handler.class",AuditLoaderConf.PUMA_KAFKA_SASL_CLIENT_CALLBACK_HANDLER_CLASS);
+
+        StringBuilder eventAudit = new StringBuilder();
+        String queryType = getQueryType(event);
+        String eventAuditId = getQueryId(queryType,event);
+        eventAudit.append(eventAuditId).append(COLUMN_SEPARATOR);
+        eventAudit.append(longToTimeString(event.timestamp)).append(COLUMN_SEPARATOR);
+        eventAudit.append(queryType).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.clientIp).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.user).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.authorizedUser).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.resourceGroup).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.catalog).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.db).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.state).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.errorCode).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.queryTime).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.scanBytes).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.scanRows).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.returnRows).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.cpuCostNs).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.memCostBytes).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.stmtId).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.isQuery ? 1 : 0).append(COLUMN_SEPARATOR);
+        eventAudit.append(event.feIp).append(COLUMN_SEPARATOR);
+        eventAudit.append(truncateByBytes(event.stmt)).append(COLUMN_SEPARATOR);
+        // Compute digest for all queries
+        if (conf.enableComputeAllQueryDigest && (event.digest == null || StringUtils.isBlank(event.digest))) {
+            event.digest = computeStatementDigest(event.stmt);
+            LOG.debug("compute stmt digest, queryId: {} digest: {}", event.queryId, event.digest);
+        }
+        auditBuffer.append(event.digest).append(COLUMN_SEPARATOR);
+        auditBuffer.append(event.planCpuCosts).append(COLUMN_SEPARATOR);
+        auditBuffer.append(event.planMemCosts).append(COLUMN_SEPARATOR);
+        auditBuffer.append(event.candidateMvs).append(COLUMN_SEPARATOR);
+        auditBuffer.append(event.hitMVs).append(ROW_DELIMITER);
+
+        KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
+        ProducerRecord producerRecord = new ProducerRecord(AuditLoaderConf.PUMA_KAFKA_TOPIC, eventAuditId, eventAudit.toString());
+        producer.send(producerRecord);
+
     }
 }
