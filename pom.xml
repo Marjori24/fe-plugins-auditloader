@@ -11,6 +11,9 @@
     <properties>
         <log4j2.version>2.19.0</log4j2.version>
         <project.scm.id>github</project.scm.id>
+        <!--ADDED PUMA-->
+        <kafka.version>3.3.2</kafka.version>
+        <airlift.version>214</airlift.version>
     </properties>
     <dependencies>
         <dependency>
@@ -47,6 +50,17 @@
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
             <version>1.15</version>
+        </dependency>
+        <!--ADDED PUMA-->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>${kafka.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.airlift</groupId>
+            <artifactId>log</artifactId>
+            <version>${airlift.version}</version>
         </dependency>
     </dependencies>
 
