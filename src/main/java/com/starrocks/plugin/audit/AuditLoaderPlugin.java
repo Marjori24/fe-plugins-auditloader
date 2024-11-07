@@ -441,7 +441,7 @@ public class AuditLoaderPlugin extends Plugin implements AuditPlugin {
     public void sendToKafka(AuditEvent event){
 
         Properties properties = new Properties();
-        properties.setProperty("bootstrap.servers", "b-1.dataislandquerykafkatr.q9ovth.c3.kafka.us-east-1.amazonaws.com:9098,b-2.dataislandquerykafkatr.q9ovth.c3.kafka.us-east-1.amazonaws.com:9098,b-3.dataislandquerykafkatr.q9ovth.c3.kafka.us-east-1.amazonaws.com:9098");
+        properties.setProperty("bootstrap.servers", "");
         properties.setProperty("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         properties.setProperty("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         properties.setProperty("max.request.size", "52428800");
